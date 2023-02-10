@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: controller-manager-ui
+  name: kube-deploymentimage-ui
+  namespace: kube-deploymentimage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: controller-manager-ui
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        control-plane: controller-manager-ui
+    spec:
+      containers:
+      - image: huisebug/kube-deploymentimage-ui:v20230210
+        imagePullPolicy: Always
+        name: ui
+        resources:
+          limits:
+            memory: 212Mi
+          requests:
+            memory: 66Mi
+        volumeMounts:
+        - mountPath: /etc/nginx/conf.d/
+          name: conf
+      volumes:
+      - configMap:
+          defaultMode: 256
+          items:
+          - key: ui.conf
+            path: ui.conf
+          name: kube-deploymentimage-ui
+          optional: false
+        name: conf
+          
+---
+
+apiVersion: v1
+data:
+  ui.conf: |-
+    server {
+        listen       80;
+        access_log  /var/log/nginx/console.access.log  main;
+        client_max_body_size 500m;
+
+        location / {
+            root /usr/share/nginx/html/;
+            index index.html index.htm;
+        }
+
+        location ~ /api/v1/ {
+            proxy_pass http://kube-deploymentimage-controller-manager:8888;
+            proxy_set_header Host $host;
+            proxy_set_header  X-Real-IP $remote_addr;
+            proxy_set_header  REMOTE-HOST $remote_addr;
+            proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+    }
+kind: ConfigMap
+metadata:
+  name: kube-deploymentimage-ui
+  namespace: kube-deploymentimage
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    control-plane: controller-manager-ui
+  name: kube-deploymentimage-ui
+  namespace: kube-deploymentimage
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    control-plane: controller-manager-ui
+

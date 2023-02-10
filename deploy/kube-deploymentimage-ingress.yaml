@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kube-deploymentimage
+  namespace: kube-deploymentimage
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: kube-deploymentimage.huisebug.org
+    http:
+      paths:
+      - pathType: Prefix
+        path: /
+        backend:
+          service:
+            name: kube-deploymentimage-ui
+            port:
+              number: 80
